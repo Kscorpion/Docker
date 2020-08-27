@@ -1,0 +1,71 @@
+1.拉取redis镜像
+
+    docker pull redis
+
+2.创建虚拟网卡，主要是用于redis-cluster能于外界进行网络通信，一般常用桥接模式。
+
+    docker network create redis-net
+
+查看docker的网卡信息，可使用命令docker network ls
+查看dockerr网络详细信息，可使用命令docker network inspect redis-net
+
+vim redis-cluster.tmpl
+
+port ${PORT}
+protected-mode no
+cluster-enabled yes
+cluster-config-file nodes.conf
+cluster-node-timeout 5000
+cluster-announce-ip 这里是你服务器ip
+cluster-announce-port ${PORT}
+cluster-announce-bus-port 1${PORT}
+appendonly yes
+
+各节点解释如下所示：
+
+port：节点端口，即对外提供通信的端口
+cluster-enabled：是否启用集群
+cluster-config-file：集群配置文件
+cluster-node-timeout：连接超时时间
+cluster-announce-ip：集群各节点IP地址
+cluster-announce-port：集群节点映射端口
+cluster-announce-bus-port：集群总线端口
+appendonly：持久化模式
+
+cluster-announce-ip:这个IP需要特别注意一下，如果要对外提供访问功能，需要填写宿主机的IP，如果填写docker分配的IP（172.x.x.x），可能会导致部分集群节点在跳转时失败。
+
+3.当前目录下执行
+for port in $(seq 8010 8015); \
+do \
+  mkdir -p ./${port}/conf  \
+  && PORT=${port} envsubst < ./redis-cluster.tmpl > ./${port}/conf/redis.conf \
+  && mkdir -p ./${port}/data; \
+done
+
+
+4.创建容器节点
+for port in $(seq 8010 8015); \
+do \
+   docker run -it -d -p ${port}:${port} -p 1${port}:1${port} \
+  --privileged=true -v 当前路径/${port}/conf/redis.conf:/usr/local/etc/redis/redis.conf \
+  --privileged=true -v 当前路径/${port}/data:/data \
+  --restart always --name redis-${port} --net redis-net \
+  --sysctl net.core.somaxconn=1024 redis redis-server /usr/local/etc/redis/redis.conf; \
+done
+
+5.进入redis容器进行配置
+docker exec -it redis-8010 bash
+
+redis-cli --cluster create 你的宿主机IP地址:8010 你的宿主机IP地址:8011 你的宿主机IP地址:8012 你的宿主机IP地址:8013 你的宿主机IP地址:8014 你的宿主机IP地址:8015
+
+6.出现选择提示信息，输入yes
+
+redis-cli -c -h 你的宿主机IP地址 -p 8010
+
+快捷查看8010-8015配置文件内容：
+cat 801{0..5}/conf/redis.conf
+
+删除全部redis容器
+docker rm -f $(docker ps -a |  grep "redis*"  | awk '{print $1}')
+删除之后需要把data目录删除
+rm -rf 801{0..5}/data
