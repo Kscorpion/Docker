@@ -56,7 +56,9 @@ done
 5.进入redis容器进行配置
 docker exec -it redis-8010 bash
 
-redis-cli --cluster create 你的宿主机IP地址:8010 你的宿主机IP地址:8011 你的宿主机IP地址:8012 你的宿主机IP地址:8013 你的宿主机IP地址:8014 你的宿主机IP地址:8015
+redis-cli --cluster create 你的宿主机IP地址:8010 你的宿主机IP地址:8011 你的宿主机IP地址:8012 你的宿主机IP地址:8013 你的宿主机IP地址:8014 你的宿主机IP地址:8015 --cluster-replicas 1
+
+这里的 --cluster-replicas 1 是分配组从的关键 这里是一主一从
 
 6.出现选择提示信息，输入yes
 
