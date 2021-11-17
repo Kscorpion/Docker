@@ -71,3 +71,8 @@ cat 801{0..5}/conf/redis.conf
 docker rm -f $(docker ps -a |  grep "redis*"  | awk '{print $1}')
 删除之后需要把data目录删除
 rm -rf 801{0..5}/data
+
+
+
+附加单点方式
+docker run -itd --name redis-docker -p 6379:6379 redis
